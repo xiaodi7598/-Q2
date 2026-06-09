@@ -1,8 +1,10 @@
 --[[ 
     FILENAME: UILibrary (ModuleScript)
     PARENT: ReplicatedStorage
-    STATUS: Dynamic Theme Support + Resizable Fixed
+    版本: 终极完整版
+    功能: 窗口系统 | 标签页 | 按钮 | 开关 | 滑条 | 下拉框 | 颜色选择器 | 快捷键绑定 | 旋转图片 | 最小化
 ]]
+
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -12,23 +14,22 @@ local Mouse = LocalPlayer:GetMouse()
 
 local Library = {}
 
---// Theme Palette (Default Dark Glass)
+-- ==================== 主题配色 ====================
 local Theme = {
-    Main = Color3.fromRGB(20, 20, 20),
-    TopBar = Color3.fromRGB(25, 25, 25),
-    DrawerBG = Color3.fromRGB(15, 15, 15),
-    Content = Color3.fromRGB(22, 22, 22),
-    Element = Color3.fromRGB(32, 32, 32),
-    Text = Color3.fromRGB(240, 240, 240),
-    SubText = Color3.fromRGB(160, 160, 160),
-    Accent = Color3.fromRGB(255, 60, 90),
-    Outline = Color3.fromRGB(50, 50, 50),
+    Main = Color3.fromRGB(15, 15, 20),
+    TopBar = Color3.fromRGB(20, 20, 28),
+    DrawerBG = Color3.fromRGB(10, 10, 15),
+    Content = Color3.fromRGB(18, 18, 24),
+    Element = Color3.fromRGB(30, 30, 40),
+    Text = Color3.fromRGB(240, 240, 245),
+    SubText = Color3.fromRGB(150, 150, 170),
+    Accent = Color3.fromRGB(255, 50, 50),
+    Outline = Color3.fromRGB(40, 40, 50),
     Gradient1 = Color3.fromRGB(255, 255, 255),
-    Gradient2 = Color3.fromRGB(180, 180, 180),
-    ActiveText = Color3.fromRGB(20, 20, 20)
+    Gradient2 = Color3.fromRGB(180, 180, 200),
+    ActiveText = Color3.fromRGB(20, 20, 25)
 }
 
---// Theme Registry (Keeps track of what elements use what colors)
 local ThemeRegistry = {}
 
 local function RegisterThemeLink(obj, prop, themeKey)
@@ -36,11 +37,9 @@ local function RegisterThemeLink(obj, prop, themeKey)
         ThemeRegistry[themeKey] = {}
     end
     table.insert(ThemeRegistry[themeKey], {Obj = obj, Prop = prop})
-    -- Apply initial color
     obj[prop] = Theme[themeKey]
 end
 
---// Helper Functions
 local function Create(class, props)
     local inst = Instance.new(class)
     for k, v in pairs(props) do
@@ -54,320 +53,317 @@ local function Round(obj, radius)
 end
 
 local function Stroke(obj, color, thickness)
-    local s =
-        Create(
-        "UIStroke",
-        {
-            Color = color,
-            Thickness = thickness,
-            ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-            Parent = obj,
-            Transparency = 0.5
-        }
-    )
+    local s = Create("UIStroke", {
+        Color = color,
+        Thickness = thickness,
+        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+        Parent = obj,
+        Transparency = 0.5
+    })
     RegisterThemeLink(s, "Color", "Outline")
 end
 
---// Resizer Fix
-local function MakeResizable(frame, minSize)
-    local Resizer =
-        Create(
-        "ImageButton",
-        {
+-- 添加发光效果
+local function AddGlow(frame)
+    local glow = Create("ImageLabel", {
+        Parent = frame,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 20, 1, 20),
+        Position = UDim2.new(0.5, -10, 0.5, -10),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Image = "rbxassetid://6014261993",
+        ImageColor3 = Theme.Accent,
+        ImageTransparency = 0.8,
+        ZIndex = frame.ZIndex - 1
+    })
+    return glow
+end
+
+-- 按钮点击波纹效果
+local function RippleEffect(button, x, y)
+    local ripple = Create("Frame", {
+        Parent = button,
+        BackgroundColor3 = Color3.new(1, 1, 1),
+        BackgroundTransparency = 0.5,
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0, x or 0, 0, y or 0),
+        ZIndex = button.ZIndex + 1
+    })
+    Round(ripple, 1)
+    
+    TweenService:Create(ripple, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = UDim2.new(2, 0, 2, 0),
+        Position = UDim2.new(0, (x or 0) - 50, 0, (y or 0) - 50),
+        BackgroundTransparency = 1
+    }):Play()
+    
+    game:GetService("Debris"):AddItem(ripple, 0.4)
+end
+
+-- ==================== 窗口创建 ====================
+function Library:Window(options)
+    local Title = options.Title or "UI Library"
+    local WindowObj = {}
+
+    local TargetParent = LocalPlayer:WaitForChild("PlayerGui")
+    if not RunService:IsStudio() then
+        pcall(function()
+            if game:GetService("CoreGui") then
+                TargetParent = game:GetService("CoreGui")
+            end
+        end)
+    end
+
+    local ScreenGui = Create("ScreenGui", {
+        Name = Title,
+        Parent = TargetParent,
+        ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    })
+
+    -- 主框架
+    local MainFrame = Create("Frame", {
+        Name = "MainFrame",
+        Parent = ScreenGui,
+        BackgroundColor3 = Theme.Main,
+        BackgroundTransparency = 0.05,
+        Position = UDim2.new(0.5, -300, 0.5, -250),
+        Size = UDim2.new(0, 600, 0, 500),
+        ClipsDescendants = true
+    })
+    RegisterThemeLink(MainFrame, "BackgroundColor3", "Main")
+    Round(MainFrame, 12)
+    Stroke(MainFrame, Theme.Outline, 1.5)
+    AddGlow(MainFrame)
+
+    -- 背景纹理
+    local GlassTexture = Create("ImageLabel", {
+        Parent = MainFrame,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, 0),
+        Image = "rbxassetid://16657395094",
+        ImageTransparency = 0.94,
+        ZIndex = 0
+    })
+
+    -- 窗口调整大小
+    local function MakeResizable(frame, minSize)
+        local Resizer = Create("ImageButton", {
             Name = "ResizeHandle",
             Parent = frame,
             BackgroundTransparency = 1,
             Position = UDim2.new(1, -16, 1, -16),
             Size = UDim2.new(0, 16, 0, 16),
             Image = "rbxassetid://6035288547",
-            ImageColor3 = Theme.Text, -- Make sure it's visible
-            ZIndex = 200 -- Ensure it's on top of everything
-        }
-    )
-    RegisterThemeLink(Resizer, "ImageColor3", "Text")
-
-    local Dragging, StartSize, StartPos = false, Vector2.new(0, 0), Vector2.new(0, 0)
-    Resizer.InputBegan:Connect(
-        function(input)
+            ImageColor3 = Theme.Text,
+            ZIndex = 200
+        })
+        RegisterThemeLink(Resizer, "ImageColor3", "Text")
+        
+        local Dragging, StartSize, StartPos = false
+        Resizer.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 Dragging, StartSize, StartPos = true, frame.AbsoluteSize, input.Position
             end
-        end
-    )
-    UserInputService.InputChanged:Connect(
-        function(input)
+        end)
+        UserInputService.InputChanged:Connect(function(input)
             if Dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
                 local Delta = input.Position - StartPos
-                frame.Size =
-                    UDim2.new(
-                    0,
-                    math.max(minSize.X, StartSize.X + Delta.X),
-                    0,
-                    math.max(minSize.Y, StartSize.Y + Delta.Y)
-                )
+                frame.Size = UDim2.new(0, math.max(minSize.X, StartSize.X + Delta.X),
+                                       0, math.max(minSize.Y, StartSize.Y + Delta.Y))
             end
-        end
-    )
-    UserInputService.InputEnded:Connect(
-        function(input)
+        end)
+        UserInputService.InputEnded:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 Dragging = false
             end
-        end
-    )
-end
-
---// Window Creation
-function Library:Window(options)
-    local Title = options.Title or "UI Library"
-    local WindowObj = {}
-
-    -- Studio Safety Check
-    local TargetParent = LocalPlayer:WaitForChild("PlayerGui")
-    if not RunService:IsStudio() then
-        pcall(
-            function()
-                if game:GetService("CoreGui") then
-                    TargetParent = game:GetService("CoreGui")
-                end
-            end
-        )
+        end)
     end
+    MakeResizable(MainFrame, Vector2.new(400, 300))
 
-    local ScreenGui =
-        Create("ScreenGui", {Name = Title, Parent = TargetParent, ZIndexBehavior = Enum.ZIndexBehavior.Sibling})
-
-    -- Main Frame
-    local MainFrame =
-        Create(
-        "Frame",
-        {
-            Name = "MainFrame",
-            Parent = ScreenGui,
-            BackgroundColor3 = Theme.Main, -- Initial set
-            BackgroundTransparency = 0.05,
-            Position = UDim2.new(0.5, -275, 0.5, -200),
-            Size = UDim2.new(0, 550, 0, 400),
-            ClipsDescendants = true
-        }
-    )
-    RegisterThemeLink(MainFrame, "BackgroundColor3", "Main") -- Register for updates
-    Round(MainFrame, 8)
-    Stroke(MainFrame, Theme.Outline, 1.5)
-
-    -- Noise Texture
-    local GlassTexture =
-        Create(
-        "ImageLabel",
-        {
-            Parent = MainFrame,
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 1, 0),
-            Image = "rbxassetid://16657395094",
-            ImageTransparency = 0.94,
-            ZIndex = 0
-        }
-    )
-
-    MakeResizable(MainFrame, Vector2.new(350, 250))
-
-    -- Draggable
-    local Dragging, DragInput, DragStart, StartPos
-    MainFrame.InputBegan:Connect(
-        function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                Dragging, DragStart, StartPos = true, input.Position, MainFrame.Position
-            end
+    -- 窗口拖拽
+    local Dragging, DragStart, StartPos
+    MainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            Dragging, DragStart, StartPos = true, input.Position, MainFrame.Position
         end
-    )
-    UserInputService.InputChanged:Connect(
-        function(input)
-            if Dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                local delta = input.Position - DragStart
-                TweenService:Create(
-                    MainFrame,
-                    TweenInfo.new(0.05),
-                    {
-                        Position = UDim2.new(
-                            StartPos.X.Scale,
-                            StartPos.X.Offset + delta.X,
-                            StartPos.Y.Scale,
-                            StartPos.Y.Offset + delta.Y
-                        )
-                    }
-                ):Play()
-            end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if Dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - DragStart
+            TweenService:Create(MainFrame, TweenInfo.new(0.05), {
+                Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + delta.X,
+                                    StartPos.Y.Scale, StartPos.Y.Offset + delta.Y)
+            }):Play()
         end
-    )
-    UserInputService.InputEnded:Connect(
-        function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                Dragging = false
-            end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            Dragging = false
         end
-    )
+    end)
 
-    --// Top Bar
-    local TopBar =
-        Create(
-        "Frame",
-        {
-            Name = "TopBar",
-            Parent = MainFrame,
-            BackgroundColor3 = Theme.TopBar,
-            BackgroundTransparency = 0.5,
-            Size = UDim2.new(1, 0, 0, 40),
-            ZIndex = 20
-        }
-    )
+    -- ==================== 顶部栏 ====================
+    local TopBar = Create("Frame", {
+        Name = "TopBar",
+        Parent = MainFrame,
+        BackgroundColor3 = Theme.TopBar,
+        BackgroundTransparency = 0.5,
+        Size = UDim2.new(1, 0, 0, 40),
+        ZIndex = 20
+    })
     RegisterThemeLink(TopBar, "BackgroundColor3", "TopBar")
 
-    local HamButton =
-        Create(
-        "ImageButton",
-        {
-            Parent = TopBar,
-            BackgroundTransparency = 1,
-            Position = UDim2.new(0, 12, 0.5, -10),
-            Size = UDim2.new(0, 20, 0, 20),
-            Image = "rbxassetid://6031091004",
-            ImageColor3 = Theme.Text,
-            ZIndex = 21
-        }
-    )
+    -- 菜单按钮（汉堡图标）
+    local HamButton = Create("ImageButton", {
+        Parent = TopBar,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 12, 0.5, -10),
+        Size = UDim2.new(0, 20, 0, 20),
+        Image = "rbxassetid://6031091004",
+        ImageColor3 = Theme.Text,
+        ZIndex = 21
+    })
     RegisterThemeLink(HamButton, "ImageColor3", "Text")
 
-    local TitleLbl =
-        Create(
-        "TextLabel",
-        {
-            Parent = TopBar,
-            BackgroundTransparency = 1,
-            Position = UDim2.new(0, 45, 0, 0),
-            Size = UDim2.new(1, -50, 1, 0),
-            Font = Enum.Font.GothamBold,
-            Text = Title,
-            TextColor3 = Theme.Text,
-            TextSize = 14,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            ZIndex = 21
-        }
-    )
+    -- 标题
+    local TitleLbl = Create("TextLabel", {
+        Parent = TopBar,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 45, 0, 0),
+        Size = UDim2.new(1, -100, 1, 0),
+        Font = Enum.Font.GothamBold,
+        Text = Title,
+        TextColor3 = Theme.Text,
+        TextSize = 14,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 21
+    })
     RegisterThemeLink(TitleLbl, "TextColor3", "Text")
 
-    --// DRAWER
-    local DrawerOverlay =
-        Create(
-        "Frame",
-        {
-            Name = "Drawer",
-            Parent = MainFrame,
-            BackgroundColor3 = Theme.DrawerBG,
-            Position = UDim2.new(-1, 0, 0, 40),
-            Size = UDim2.new(1, 0, 1, -40),
-            ZIndex = 50,
-            BorderSizePixel = 0
-        }
-    )
+    -- 最小化按钮
+    local MinimizeBtn = Create("TextButton", {
+        Parent = TopBar,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(1, -50, 0.5, -10),
+        Size = UDim2.new(0, 20, 0, 20),
+        Text = "_",
+        TextColor3 = Theme.Text,
+        TextSize = 18,
+        Font = Enum.Font.GothamBold,
+        ZIndex = 21
+    })
+    RegisterThemeLink(MinimizeBtn, "TextColor3", "Text")
+    
+    -- 关闭按钮
+    local CloseBtn = Create("TextButton", {
+        Parent = TopBar,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(1, -25, 0.5, -10),
+        Size = UDim2.new(0, 20, 0, 20),
+        Text = "✕",
+        TextColor3 = Theme.Text,
+        TextSize = 14,
+        Font = Enum.Font.GothamBold,
+        ZIndex = 21
+    })
+    RegisterThemeLink(CloseBtn, "TextColor3", "Text")
+
+    -- ==================== 侧边栏抽屉 ====================
+    local DrawerOverlay = Create("Frame", {
+        Name = "Drawer",
+        Parent = MainFrame,
+        BackgroundColor3 = Theme.DrawerBG,
+        Position = UDim2.new(-1, 0, 0, 40),
+        Size = UDim2.new(1, 0, 1, -40),
+        ZIndex = 50,
+        BorderSizePixel = 0
+    })
     RegisterThemeLink(DrawerOverlay, "BackgroundColor3", "DrawerBG")
+    Round(DrawerOverlay, 0)
 
-    Create(
-        "UIGradient",
-        {
-            Parent = DrawerOverlay,
-            Rotation = 0,
-            Transparency = NumberSequence.new(
-                {
-                    NumberSequenceKeypoint.new(0.0, 0.0),
-                    NumberSequenceKeypoint.new(0.4, 0.0),
-                    NumberSequenceKeypoint.new(1.0, 0.8)
-                }
-            )
-        }
-    )
+    local ButtonContainer = Create("Frame", {
+        Parent = DrawerOverlay,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(0, 200, 1, 0),
+        Position = UDim2.new(0, 0, 0, 0),
+        ZIndex = 51
+    })
+    
+    Create("UIListLayout", {
+        Parent = ButtonContainer,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, 10),
+        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+        VerticalAlignment = Enum.VerticalAlignment.Center
+    })
 
-    local ButtonContainer =
-        Create(
-        "Frame",
-        {
-            Parent = DrawerOverlay,
-            BackgroundTransparency = 1,
-            Size = UDim2.new(0, 200, 1, 0),
-            Position = UDim2.new(0, 0, 0, 0),
-            ZIndex = 51
-        }
-    )
-
-    Create(
-        "UIListLayout",
-        {
-            Parent = ButtonContainer,
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Padding = UDim.new(0, 10),
-            HorizontalAlignment = Enum.HorizontalAlignment.Center,
-            VerticalAlignment = Enum.VerticalAlignment.Center
-        }
-    )
-
-    --// Pages
-    local PageContainer =
-        Create(
-        "Frame",
-        {
-            Name = "Pages",
-            Parent = MainFrame,
-            BackgroundColor3 = Theme.Content,
-            BackgroundTransparency = 0.8,
-            Position = UDim2.new(0, 0, 0, 40),
-            Size = UDim2.new(1, 0, 1, -40),
-            ZIndex = 1
-        }
-    )
+    -- ==================== 页面容器 ====================
+    local PageContainer = Create("Frame", {
+        Name = "Pages",
+        Parent = MainFrame,
+        BackgroundColor3 = Theme.Content,
+        BackgroundTransparency = 0.8,
+        Position = UDim2.new(0, 0, 0, 40),
+        Size = UDim2.new(1, 0, 1, -40),
+        ZIndex = 1
+    })
     RegisterThemeLink(PageContainer, "BackgroundColor3", "Content")
 
-    --// Drawer Animation
+    -- 抽屉动画
     local DrawerOpen = false
     local function ToggleDrawer(forceClose)
-        if forceClose then
-            DrawerOpen = true
-        end
+        if forceClose and not DrawerOpen then return end
         DrawerOpen = not DrawerOpen
         local Goal = DrawerOpen and UDim2.new(0, 0, 0, 40) or UDim2.new(-1, 0, 0, 40)
         local Rot = DrawerOpen and 90 or 0
         local Col = DrawerOpen and Theme.Accent or Theme.Text
-
-        TweenService:Create(
-            DrawerOverlay,
-            TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-            {Position = Goal}
-        ):Play()
+        
+        TweenService:Create(DrawerOverlay, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Position = Goal
+        }):Play()
         TweenService:Create(HamButton, TweenInfo.new(0.3), {Rotation = Rot, ImageColor3 = Col}):Play()
     end
-    HamButton.MouseButton1Click:Connect(
-        function()
-            ToggleDrawer(false)
-        end
-    )
+    
+    HamButton.MouseButton1Click:Connect(function() ToggleDrawer() end)
+    
+    -- 最小化功能
+    local minimized = false
+    MinimizeBtn.MouseButton1Click:Connect(function()
+        minimized = not minimized
+        local targetSize = minimized and UDim2.new(0, 300, 0, 40) or UDim2.new(0, 600, 0, 500)
+        local targetPos = minimized and UDim2.new(0.5, -150, 0.5, -20) or UDim2.new(0.5, -300, 0.5, -250)
+        
+        TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = targetSize,
+            Position = targetPos
+        }):Play()
+        
+        PageContainer.Visible = not minimized
+        DrawerOverlay.Visible = not minimized
+        MinimizeBtn.Text = minimized and "□" or "_"
+    end)
+    
+    -- 关闭功能
+    CloseBtn.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
 
-    --// THEME SETTER FUNCTION (PUBLIC)
+    -- ==================== 主题设置 ====================
     function WindowObj:SetTheme(key, color)
         if Theme[key] then
             Theme[key] = color
             if ThemeRegistry[key] then
                 for _, link in pairs(ThemeRegistry[key]) do
-                    -- Smoothly transition colors
                     TweenService:Create(link.Obj, TweenInfo.new(0.3), {[link.Prop] = color}):Play()
                 end
             end
-
-            -- Special case for Accent color affecting drawer button
             if key == "Accent" and DrawerOpen then
                 TweenService:Create(HamButton, TweenInfo.new(0.3), {ImageColor3 = color}):Play()
             end
         end
     end
 
-    --// Tabs System
+    -- ==================== 标签页系统 ====================
     WindowObj.Tabs = {}
     local FirstTab = true
     local TabInstances = {}
@@ -375,138 +371,100 @@ function Library:Window(options)
     function WindowObj:Tab(name, iconId)
         local TabFuncs = {}
 
-        local TabBtn =
-            Create(
-            "TextButton",
-            {
-                Parent = ButtonContainer,
-                BackgroundColor3 = Theme.Gradient1,
-                BackgroundTransparency = 1,
-                Size = UDim2.new(0, 0, 0, 32),
-                AutomaticSize = Enum.AutomaticSize.X,
-                Text = "",
-                AutoButtonColor = false,
-                ZIndex = 55
-            }
-        )
+        local TabBtn = Create("TextButton", {
+            Parent = ButtonContainer,
+            BackgroundColor3 = Theme.Gradient1,
+            BackgroundTransparency = 1,
+            Size = UDim2.new(0, 0, 0, 32),
+            AutomaticSize = Enum.AutomaticSize.X,
+            Text = "",
+            AutoButtonColor = false,
+            ZIndex = 55
+        })
         Round(TabBtn, 20)
         Create("UIPadding", {Parent = TabBtn, PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14)})
 
         local BtnScale = Create("UIScale", {Parent = TabBtn, Scale = 1})
-        local BtnGradient =
-            Create(
-            "UIGradient",
-            {
-                Parent = TabBtn,
-                Color = ColorSequence.new {
-                    ColorSequenceKeypoint.new(0, Theme.Gradient1),
-                    ColorSequenceKeypoint.new(1, Theme.Gradient2)
-                },
-                Rotation = 45,
-                Enabled = false
-            }
-        )
+        local BtnGradient = Create("UIGradient", {
+            Parent = TabBtn,
+            Color = ColorSequence.new {
+                ColorSequenceKeypoint.new(0, Theme.Gradient1),
+                ColorSequenceKeypoint.new(1, Theme.Gradient2)
+            },
+            Rotation = 45,
+            Enabled = false
+        })
 
-        local Layout =
-            Create(
-            "UIListLayout",
-            {
-                Parent = TabBtn,
-                FillDirection = Enum.FillDirection.Horizontal,
-                HorizontalAlignment = Enum.HorizontalAlignment.Center,
-                VerticalAlignment = Enum.VerticalAlignment.Center,
-                Padding = UDim.new(0, 6)
-            }
-        )
-
-        local Icon =
-            Create(
-            "ImageLabel",
-            {
-                Parent = TabBtn,
-                BackgroundTransparency = 1,
-                Size = UDim2.new(0, 16, 0, 16),
-                Image = "rbxassetid://" .. (iconId or "0"),
-                ImageColor3 = Theme.SubText,
-                ZIndex = 56
-            }
-        )
+        local Icon = Create("ImageLabel", {
+            Parent = TabBtn,
+            BackgroundTransparency = 1,
+            Size = UDim2.new(0, 16, 0, 16),
+            Image = "rbxassetid://" .. (iconId or "0"),
+            ImageColor3 = Theme.SubText,
+            ZIndex = 56
+        })
         RegisterThemeLink(Icon, "ImageColor3", "SubText")
 
-        local Label =
-            Create(
-            "TextLabel",
-            {
-                Parent = TabBtn,
-                BackgroundTransparency = 1,
-                Size = UDim2.new(0, 0, 1, 0),
-                AutomaticSize = Enum.AutomaticSize.X,
-                Font = Enum.Font.GothamBold,
-                Text = name,
-                TextColor3 = Theme.SubText,
-                TextSize = 12,
-                ZIndex = 56
-            }
-        )
+        local Label = Create("TextLabel", {
+            Parent = TabBtn,
+            BackgroundTransparency = 1,
+            Size = UDim2.new(0, 0, 1, 0),
+            AutomaticSize = Enum.AutomaticSize.X,
+            Font = Enum.Font.GothamBold,
+            Text = name,
+            TextColor3 = Theme.SubText,
+            TextSize = 12,
+            ZIndex = 56
+        })
         RegisterThemeLink(Label, "TextColor3", "SubText")
 
-        local Page =
-            Create(
-            "ScrollingFrame",
-            {
-                Parent = PageContainer,
-                BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 1, 0),
-                CanvasSize = UDim2.new(0, 0, 0, 0),
-                Visible = false,
-                ScrollBarThickness = 2,
-                ScrollBarImageColor3 = Theme.Accent
-            }
-        )
+        -- 页面
+        local Page = Create("ScrollingFrame", {
+            Parent = PageContainer,
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 1, 0),
+            CanvasSize = UDim2.new(0, 0, 0, 0),
+            Visible = false,
+            ScrollBarThickness = 2,
+            ScrollBarImageColor3 = Theme.Accent
+        })
         RegisterThemeLink(Page, "ScrollBarImageColor3", "Accent")
-        Create(
-            "UIPadding",
-            {
-                Parent = Page,
-                PaddingTop = UDim.new(0, 12),
-                PaddingLeft = UDim.new(0, 12),
-                PaddingRight = UDim.new(0, 12),
-                PaddingBottom = UDim.new(0, 12)
-            }
-        )
-        local PageLayout =
-            Create("UIListLayout", {Parent = Page, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 8)})
+        Create("UIPadding", {
+            Parent = Page,
+            PaddingTop = UDim.new(0, 12),
+            PaddingLeft = UDim.new(0, 12),
+            PaddingRight = UDim.new(0, 12),
+            PaddingBottom = UDim.new(0, 12)
+        })
+        
+        local PageLayout = Create("UIListLayout", {
+            Parent = Page,
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Padding = UDim.new(0, 8)
+        })
 
-        PageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(
-            function()
-                Page.CanvasSize = UDim2.new(0, 0, 0, PageLayout.AbsoluteContentSize.Y + 24)
-            end
-        )
+        PageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            Page.CanvasSize = UDim2.new(0, 0, 0, PageLayout.AbsoluteContentSize.Y + 24)
+        end)
 
-        TabBtn.MouseEnter:Connect(
-            function()
-                TweenService:Create(BtnScale, TweenInfo.new(0.2), {Scale = 1.15}):Play()
-            end
-        )
-        TabBtn.MouseLeave:Connect(
-            function()
-                TweenService:Create(BtnScale, TweenInfo.new(0.2), {Scale = 1.0}):Play()
-            end
-        )
+        -- 悬停动画
+        TabBtn.MouseEnter:Connect(function()
+            TweenService:Create(BtnScale, TweenInfo.new(0.2), {Scale = 1.15}):Play()
+        end)
+        TabBtn.MouseLeave:Connect(function()
+            TweenService:Create(BtnScale, TweenInfo.new(0.2), {Scale = 1.0}):Play()
+        end)
 
+        -- 激活标签页
         local function Activate()
             for _, t in pairs(TabInstances) do
                 TweenService:Create(t.Btn, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
-                if t.Gradient then
-                    t.Gradient.Enabled = false
-                end
+                if t.Gradient then t.Gradient.Enabled = false end
                 TweenService:Create(t.Label, TweenInfo.new(0.2), {TextColor3 = Theme.SubText}):Play()
                 TweenService:Create(t.Icon, TweenInfo.new(0.2), {ImageColor3 = Theme.SubText}):Play()
             end
             for _, p in pairs(PageContainer:GetChildren()) do
-                if p:IsA("ScrollingFrame") then
-                    p.Visible = false
-                end
+                if p:IsA("ScrollingFrame") then p.Visible = false end
             end
 
             Page.Visible = true
@@ -522,200 +480,163 @@ function Library:Window(options)
 
         if FirstTab then
             Activate()
-            ToggleDrawer(true)
             FirstTab = false
         end
 
-        --// SECTIONS
+        -- ==================== 区域创建 ====================
         function TabFuncs:Section(text)
             local SecFuncs = {}
-            local Box =
-                Create(
-                "Frame",
-                {
-                    Parent = Page,
-                    BackgroundColor3 = Theme.TopBar,
-                    BackgroundTransparency = 0.3,
-                    Size = UDim2.new(1, 0, 0, 0),
-                    AutomaticSize = Enum.AutomaticSize.Y
-                }
-            )
+            local Box = Create("Frame", {
+                Parent = Page,
+                BackgroundColor3 = Theme.TopBar,
+                BackgroundTransparency = 0.3,
+                Size = UDim2.new(1, 0, 0, 0),
+                AutomaticSize = Enum.AutomaticSize.Y
+            })
             RegisterThemeLink(Box, "BackgroundColor3", "TopBar")
-            Round(Box, 6)
+            Round(Box, 8)
             Stroke(Box, Theme.Outline, 1)
 
-            local SecTitle =
-                Create(
-                "TextLabel",
-                {
-                    Parent = Box,
-                    BackgroundTransparency = 1,
-                    Position = UDim2.new(0, 10, 0, 6),
-                    Size = UDim2.new(1, -20, 0, 14),
-                    Font = Enum.Font.GothamBold,
-                    Text = text,
-                    TextColor3 = Theme.SubText,
-                    TextSize = 11,
-                    TextXAlignment = Enum.TextXAlignment.Left
-                }
-            )
+            local SecTitle = Create("TextLabel", {
+                Parent = Box,
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0, 10, 0, 6),
+                Size = UDim2.new(1, -20, 0, 14),
+                Font = Enum.Font.GothamBold,
+                Text = text,
+                TextColor3 = Theme.SubText,
+                TextSize = 11,
+                TextXAlignment = Enum.TextXAlignment.Left
+            })
             RegisterThemeLink(SecTitle, "TextColor3", "SubText")
 
-            local Container =
-                Create(
-                "Frame",
-                {
-                    Parent = Box,
-                    BackgroundTransparency = 1,
-                    Position = UDim2.new(0, 8, 0, 24),
-                    Size = UDim2.new(1, -16, 0, 0),
-                    AutomaticSize = Enum.AutomaticSize.Y
-                }
-            )
-            Create(
-                "UIListLayout",
-                {Parent = Container, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 5)}
-            )
+            local Container = Create("Frame", {
+                Parent = Box,
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0, 8, 0, 24),
+                Size = UDim2.new(1, -16, 0, 0),
+                AutomaticSize = Enum.AutomaticSize.Y
+            })
+            Create("UIListLayout", {
+                Parent = Container,
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Padding = UDim.new(0, 5)
+            })
             Create("UIPadding", {Parent = Container, PaddingBottom = UDim.new(0, 8)})
 
+            -- ==================== 开关组件 ====================
             function SecFuncs:Toggle(text, default, callback)
                 local Active = default or false
-                local TFrame =
-                    Create(
-                    "TextButton",
-                    {
-                        Parent = Container,
-                        BackgroundTransparency = 1,
-                        Size = UDim2.new(1, 0, 0, 26),
-                        Text = "",
-                        AutoButtonColor = false
-                    }
-                )
-                local Lbl =
-                    Create(
-                    "TextLabel",
-                    {
-                        Parent = TFrame,
-                        BackgroundTransparency = 1,
-                        Size = UDim2.new(0.7, 0, 1, 0),
-                        Font = Enum.Font.Gotham,
-                        Text = text,
-                        TextColor3 = Theme.SubText,
-                        TextSize = 12,
-                        TextXAlignment = Enum.TextXAlignment.Left
-                    }
-                )
+                local TFrame = Create("TextButton", {
+                    Parent = Container,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 26),
+                    Text = "",
+                    AutoButtonColor = false
+                })
+                
+                local Lbl = Create("TextLabel", {
+                    Parent = TFrame,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(0.7, 0, 1, 0),
+                    Font = Enum.Font.Gotham,
+                    Text = text,
+                    TextColor3 = Theme.SubText,
+                    TextSize = 12,
+                    TextXAlignment = Enum.TextXAlignment.Left
+                })
                 RegisterThemeLink(Lbl, "TextColor3", "SubText")
-                local CB =
-                    Create(
-                    "Frame",
-                    {
-                        Parent = TFrame,
-                        AnchorPoint = Vector2.new(1, 0.5),
-                        Position = UDim2.new(1, 0, 0.5, 0),
-                        Size = UDim2.new(0, 18, 0, 18),
-                        BackgroundColor3 = Theme.Element
-                    }
-                )
+                
+                local CB = Create("Frame", {
+                    Parent = TFrame,
+                    AnchorPoint = Vector2.new(1, 0.5),
+                    Position = UDim2.new(1, 0, 0.5, 0),
+                    Size = UDim2.new(0, 18, 0, 18),
+                    BackgroundColor3 = Theme.Element
+                })
                 Round(CB, 4)
                 Stroke(CB, Theme.Outline, 1)
                 RegisterThemeLink(CB, "BackgroundColor3", "Element")
-                local Check =
-                    Create(
-                    "Frame",
-                    {
-                        Parent = CB,
-                        AnchorPoint = Vector2.new(0.5, 0.5),
-                        Position = UDim2.new(0.5, 0, 0.5, 0),
-                        Size = UDim2.new(0, 0, 0, 0),
-                        BackgroundColor3 = Theme.Accent
-                    }
-                )
+                
+                local Check = Create("Frame", {
+                    Parent = CB,
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    Position = UDim2.new(0.5, 0, 0.5, 0),
+                    Size = UDim2.new(0, 0, 0, 0),
+                    BackgroundColor3 = Theme.Accent
+                })
                 Round(Check, 3)
                 RegisterThemeLink(Check, "BackgroundColor3", "Accent")
 
-                local function Upd()
-                    TweenService:Create(
-                        Check,
-                        TweenInfo.new(0.2),
-                        {Size = Active and UDim2.new(0, 12, 0, 12) or UDim2.new(0, 0, 0, 0)}
-                    ):Play()
-                    TweenService:Create(Lbl, TweenInfo.new(0.2), {TextColor3 = Active and Theme.Text or Theme.SubText}):Play(
-
-                    )
-                    if callback then
-                        callback(Active)
-                    end
+                local function Update()
+                    TweenService:Create(Check, TweenInfo.new(0.2), {
+                        Size = Active and UDim2.new(0, 12, 0, 12) or UDim2.new(0, 0, 0, 0)
+                    }):Play()
+                    TweenService:Create(Lbl, TweenInfo.new(0.2), {
+                        TextColor3 = Active and Theme.Text or Theme.SubText
+                    }):Play()
+                    if callback then callback(Active) end
                 end
-                TFrame.MouseButton1Click:Connect(
-                    function()
-                        Active = not Active
-                        Upd()
-                    end
-                )
-                if Active then
-                    Upd()
-                end
+                
+                TFrame.MouseButton1Click:Connect(function()
+                    Active = not Active
+                    Update()
+                    RippleEffect(TFrame, Mouse.X - TFrame.AbsolutePosition.X, Mouse.Y - TFrame.AbsolutePosition.Y)
+                end)
+                
+                if Active then Update() end
             end
 
+            -- ==================== 滑块组件 ====================
             function SecFuncs:Slider(text, options, callback)
                 local min, max, def = options.min or 0, options.max or 100, options.default or min
                 local val = def
-                local SFrame =
-                    Create("Frame", {Parent = Container, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 32)})
-                local Lbl =
-                    Create(
-                    "TextLabel",
-                    {
-                        Parent = SFrame,
-                        BackgroundTransparency = 1,
-                        Size = UDim2.new(1, 0, 0, 16),
-                        Font = Enum.Font.Gotham,
-                        Text = text,
-                        TextColor3 = Theme.SubText,
-                        TextSize = 12,
-                        TextXAlignment = Enum.TextXAlignment.Left
-                    }
-                )
+                local SFrame = Create("Frame", {
+                    Parent = Container,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 32)
+                })
+                
+                local Lbl = Create("TextLabel", {
+                    Parent = SFrame,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 16),
+                    Font = Enum.Font.Gotham,
+                    Text = text,
+                    TextColor3 = Theme.SubText,
+                    TextSize = 12,
+                    TextXAlignment = Enum.TextXAlignment.Left
+                })
                 RegisterThemeLink(Lbl, "TextColor3", "SubText")
-                local ValL =
-                    Create(
-                    "TextLabel",
-                    {
-                        Parent = SFrame,
-                        BackgroundTransparency = 1,
-                        Size = UDim2.new(1, 0, 0, 16),
-                        Font = Enum.Font.Gotham,
-                        Text = tostring(val),
-                        TextColor3 = Theme.Text,
-                        TextSize = 12,
-                        TextXAlignment = Enum.TextXAlignment.Right
-                    }
-                )
+                
+                local ValL = Create("TextLabel", {
+                    Parent = SFrame,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 16),
+                    Font = Enum.Font.Gotham,
+                    Text = tostring(val),
+                    TextColor3 = Theme.Text,
+                    TextSize = 12,
+                    TextXAlignment = Enum.TextXAlignment.Right
+                })
                 RegisterThemeLink(ValL, "TextColor3", "Text")
-                local Track =
-                    Create(
-                    "TextButton",
-                    {
-                        Parent = SFrame,
-                        BackgroundColor3 = Theme.Element,
-                        Position = UDim2.new(0, 0, 0, 22),
-                        Size = UDim2.new(1, 0, 0, 4),
-                        Text = "",
-                        AutoButtonColor = false
-                    }
-                )
+                
+                local Track = Create("TextButton", {
+                    Parent = SFrame,
+                    BackgroundColor3 = Theme.Element,
+                    Position = UDim2.new(0, 0, 0, 22),
+                    Size = UDim2.new(1, 0, 0, 4),
+                    Text = "",
+                    AutoButtonColor = false
+                })
                 Round(Track, 4)
                 RegisterThemeLink(Track, "BackgroundColor3", "Element")
-                local Fill =
-                    Create(
-                    "Frame",
-                    {
-                        Parent = Track,
-                        BackgroundColor3 = Theme.Accent,
-                        Size = UDim2.new((val - min) / (max - min), 0, 1, 0)
-                    }
-                )
+                
+                local Fill = Create("Frame", {
+                    Parent = Track,
+                    BackgroundColor3 = Theme.Accent,
+                    Size = UDim2.new((val - min) / (max - min), 0, 1, 0)
+                })
                 Round(Fill, 4)
                 RegisterThemeLink(Fill, "BackgroundColor3", "Accent")
 
@@ -725,339 +646,259 @@ function Library:Window(options)
                     val = math.floor(min + (max - min) * p)
                     ValL.Text = tostring(val)
                     TweenService:Create(Fill, TweenInfo.new(0.05), {Size = UDim2.new(p, 0, 1, 0)}):Play()
-                    if callback then
-                        callback(val)
-                    end
+                    if callback then callback(val) end
                 end
-                Track.InputBegan:Connect(
-                    function(i)
-                        if i.UserInputType == Enum.UserInputType.MouseButton1 then
-                            Dragging = true
-                            Update(i)
-                        end
+                
+                Track.InputBegan:Connect(function(i)
+                    if i.UserInputType == Enum.UserInputType.MouseButton1 then
+                        Dragging = true
+                        Update(i)
                     end
-                )
-                UserInputService.InputEnded:Connect(
-                    function(i)
-                        if i.UserInputType == Enum.UserInputType.MouseButton1 then
-                            Dragging = false
-                        end
+                end)
+                UserInputService.InputEnded:Connect(function(i)
+                    if i.UserInputType == Enum.UserInputType.MouseButton1 then
+                        Dragging = false
                     end
-                )
-                UserInputService.InputChanged:Connect(
-                    function(i)
-                        if Dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
-                            Update(i)
-                        end
+                end)
+                UserInputService.InputChanged:Connect(function(i)
+                    if Dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+                        Update(i)
                     end
-                )
+                end)
             end
 
+            -- ==================== 按钮组件 ====================
             function SecFuncs:Button(text, callback)
-                local Btn =
-                    Create(
-                    "TextButton",
-                    {
-                        Parent = Container,
-                        BackgroundColor3 = Theme.Element,
-                        Size = UDim2.new(1, 0, 0, 26),
-                        Font = Enum.Font.Gotham,
-                        Text = text,
-                        TextColor3 = Theme.Text,
-                        TextSize = 12,
-                        AutoButtonColor = false
-                    }
-                )
+                local Btn = Create("TextButton", {
+                    Parent = Container,
+                    BackgroundColor3 = Theme.Element,
+                    Size = UDim2.new(1, 0, 0, 26),
+                    Font = Enum.Font.Gotham,
+                    Text = text,
+                    TextColor3 = Theme.Text,
+                    TextSize = 12,
+                    AutoButtonColor = false
+                })
                 Round(Btn, 4)
                 Stroke(Btn, Theme.Outline, 1)
                 RegisterThemeLink(Btn, "BackgroundColor3", "Element")
                 RegisterThemeLink(Btn, "TextColor3", "Text")
-                Btn.MouseButton1Click:Connect(
-                    function()
-                        spawn(
-                            function()
-                                local C =
-                                    Create(
-                                    "ImageLabel",
-                                    {
-                                        Name = "R",
-                                        Parent = Btn,
-                                        BackgroundTransparency = 1,
-                                        Image = "rbxassetid://266543268",
-                                        ImageColor3 = Color3.new(1, 1, 1),
-                                        ImageTransparency = 0.8,
-                                        Position = UDim2.new(
-                                            0,
-                                            Mouse.X - Btn.AbsolutePosition.X,
-                                            0,
-                                            Mouse.Y - Btn.AbsolutePosition.Y
-                                        ),
-                                        Size = UDim2.new(0, 0, 0, 0),
-                                        ZIndex = 60
-                                    }
-                                )
-                                TweenService:Create(
-                                    C,
-                                    TweenInfo.new(0.4),
-                                    {
-                                        Size = UDim2.new(0, 150, 0, 150),
-                                        Position = UDim2.new(0.5, -75, 0.5, -75),
-                                        ImageTransparency = 1
-                                    }
-                                ):Play()
-                                wait(0.4)
-                                C:Destroy()
-                            end
-                        )
-                        if callback then
-                            callback()
-                        end
-                    end
-                )
+                
+                Btn.MouseButton1Click:Connect(function()
+                    RippleEffect(Btn, Mouse.X - Btn.AbsolutePosition.X, Mouse.Y - Btn.AbsolutePosition.Y)
+                    if callback then callback() end
+                end)
+                
+                Btn.MouseEnter:Connect(function()
+                    TweenService:Create(Btn, TweenInfo.new(0.2), {BackgroundColor3 = Theme.Accent}):Play()
+                    TweenService:Create(Btn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+                end)
+                Btn.MouseLeave:Connect(function()
+                    TweenService:Create(Btn, TweenInfo.new(0.2), {BackgroundColor3 = Theme.Element}):Play()
+                    TweenService:Create(Btn, TweenInfo.new(0.2), {TextColor3 = Theme.Text}):Play()
+                end)
             end
 
+            -- ==================== 下拉框组件 ====================
             function SecFuncs:Dropdown(text, items, callback)
                 local IsOpen = false
-                local DFrame =
-                    Create(
-                    "Frame",
-                    {
-                        Parent = Container,
-                        BackgroundTransparency = 1,
-                        Size = UDim2.new(1, 0, 0, 30),
-                        ClipsDescendants = true
-                    }
-                )
-                local Header =
-                    Create(
-                    "TextButton",
-                    {
-                        Parent = DFrame,
-                        BackgroundColor3 = Theme.Element,
-                        Size = UDim2.new(1, 0, 0, 30),
-                        Font = Enum.Font.Gotham,
-                        Text = "  " .. text,
-                        TextColor3 = Theme.Text,
-                        TextSize = 12,
-                        TextXAlignment = Enum.TextXAlignment.Left,
-                        AutoButtonColor = false
-                    }
-                )
+                local DFrame = Create("Frame", {
+                    Parent = Container,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 30),
+                    ClipsDescendants = true
+                })
+                
+                local Header = Create("TextButton", {
+                    Parent = DFrame,
+                    BackgroundColor3 = Theme.Element,
+                    Size = UDim2.new(1, 0, 0, 30),
+                    Font = Enum.Font.Gotham,
+                    Text = "  " .. text,
+                    TextColor3 = Theme.Text,
+                    TextSize = 12,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    AutoButtonColor = false
+                })
                 Round(Header, 4)
                 Stroke(Header, Theme.Outline, 1)
                 RegisterThemeLink(Header, "BackgroundColor3", "Element")
                 RegisterThemeLink(Header, "TextColor3", "Text")
-                local Icon =
-                    Create(
-                    "ImageLabel",
-                    {
-                        Parent = Header,
-                        AnchorPoint = Vector2.new(1, 0.5),
-                        Position = UDim2.new(1, -8, 0.5, 0),
-                        Size = UDim2.new(0, 12, 0, 12),
-                        Image = "rbxassetid://6034818379",
-                        ImageColor3 = Theme.SubText,
-                        BackgroundTransparency = 1
-                    }
-                )
+                
+                local Icon = Create("ImageLabel", {
+                    Parent = Header,
+                    AnchorPoint = Vector2.new(1, 0.5),
+                    Position = UDim2.new(1, -8, 0.5, 0),
+                    Size = UDim2.new(0, 12, 0, 12),
+                    Image = "rbxassetid://6034818379",
+                    ImageColor3 = Theme.SubText,
+                    BackgroundTransparency = 1
+                })
                 RegisterThemeLink(Icon, "ImageColor3", "SubText")
 
-                local List =
-                    Create(
-                    "Frame",
-                    {
-                        Parent = DFrame,
-                        BackgroundTransparency = 1,
-                        Position = UDim2.new(0, 0, 0, 34),
-                        Size = UDim2.new(1, 0, 0, 0),
-                        AutomaticSize = Enum.AutomaticSize.Y
-                    }
-                )
-                local ListLayout =
-                    Create(
-                    "UIListLayout",
-                    {Parent = List, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 4)}
-                )
+                local List = Create("Frame", {
+                    Parent = DFrame,
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(0, 0, 0, 34),
+                    Size = UDim2.new(1, 0, 0, 0),
+                    AutomaticSize = Enum.AutomaticSize.Y
+                })
+                local ListLayout = Create("UIListLayout", {
+                    Parent = List,
+                    SortOrder = Enum.SortOrder.LayoutOrder,
+                    Padding = UDim.new(0, 4)
+                })
 
                 for _, item in pairs(items) do
-                    local IB =
-                        Create(
-                        "TextButton",
-                        {
-                            Parent = List,
-                            BackgroundColor3 = Theme.Element,
-                            Size = UDim2.new(1, 0, 0, 24),
-                            Font = Enum.Font.Gotham,
-                            Text = item,
-                            TextColor3 = Theme.SubText,
-                            TextSize = 11,
-                            AutoButtonColor = false
-                        }
-                    )
+                    local IB = Create("TextButton", {
+                        Parent = List,
+                        BackgroundColor3 = Theme.Element,
+                        Size = UDim2.new(1, 0, 0, 24),
+                        Font = Enum.Font.Gotham,
+                        Text = item,
+                        TextColor3 = Theme.SubText,
+                        TextSize = 11,
+                        AutoButtonColor = false
+                    })
                     Round(IB, 4)
                     RegisterThemeLink(IB, "BackgroundColor3", "Element")
                     RegisterThemeLink(IB, "TextColor3", "SubText")
-                    IB.MouseButton1Click:Connect(
-                        function()
-                            Header.Text = "  " .. text .. ": " .. item
-                            IsOpen = false
-                            TweenService:Create(DFrame, TweenInfo.new(0.2), {Size = UDim2.new(1, 0, 0, 30)}):Play()
-                            TweenService:Create(Icon, TweenInfo.new(0.2), {Rotation = 0}):Play()
-                            if callback then
-                                callback(item)
-                            end
-                        end
-                    )
+                    
+                    IB.MouseButton1Click:Connect(function()
+                        Header.Text = "  " .. text .. ": " .. item
+                        IsOpen = false
+                        TweenService:Create(DFrame, TweenInfo.new(0.2), {Size = UDim2.new(1, 0, 0, 30)}):Play()
+                        TweenService:Create(Icon, TweenInfo.new(0.2), {Rotation = 0}):Play()
+                        if callback then callback(item) end
+                    end)
                 end
-                Header.MouseButton1Click:Connect(
-                    function()
-                        IsOpen = not IsOpen
-                        local Height = IsOpen and (34 + ListLayout.AbsoluteContentSize.Y + 4) or 30
-                        TweenService:Create(DFrame, TweenInfo.new(0.3), {Size = UDim2.new(1, 0, 0, Height)}):Play()
-                        TweenService:Create(Icon, TweenInfo.new(0.3), {Rotation = IsOpen and 180 or 0}):Play()
-                    end
-                )
+                
+                Header.MouseButton1Click:Connect(function()
+                    IsOpen = not IsOpen
+                    local Height = IsOpen and (34 + ListLayout.AbsoluteContentSize.Y + 4) or 30
+                    TweenService:Create(DFrame, TweenInfo.new(0.3), {Size = UDim2.new(1, 0, 0, Height)}):Play()
+                    TweenService:Create(Icon, TweenInfo.new(0.3), {Rotation = IsOpen and 180 or 0}):Play()
+                end)
             end
 
+            -- ==================== 颜色选择器组件 ====================
             function SecFuncs:ColorPicker(text, default, callback)
                 local CurrentColor = default or Color3.fromRGB(255, 255, 255)
                 local Open = false
-                local CFrame =
-                    Create(
-                    "Frame",
-                    {
-                        Parent = Container,
-                        BackgroundTransparency = 1,
-                        Size = UDim2.new(1, 0, 0, 26),
-                        ClipsDescendants = true
-                    }
-                )
-                local Header =
-                    Create(
-                    "TextButton",
-                    {
-                        Parent = CFrame,
-                        BackgroundTransparency = 1,
-                        Size = UDim2.new(1, 0, 0, 26),
-                        Text = "",
-                        AutoButtonColor = false
-                    }
-                )
-                local Lbl =
-                    Create(
-                    "TextLabel",
-                    {
-                        Parent = Header,
-                        BackgroundTransparency = 1,
-                        Size = UDim2.new(0.7, 0, 1, 0),
-                        Font = Enum.Font.Gotham,
-                        Text = text,
-                        TextColor3 = Theme.SubText,
-                        TextSize = 12,
-                        TextXAlignment = Enum.TextXAlignment.Left
-                    }
-                )
+                local CFrame = Create("Frame", {
+                    Parent = Container,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 26),
+                    ClipsDescendants = true
+                })
+                
+                local Header = Create("TextButton", {
+                    Parent = CFrame,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 26),
+                    Text = "",
+                    AutoButtonColor = false
+                })
+                
+                local Lbl = Create("TextLabel", {
+                    Parent = Header,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(0.7, 0, 1, 0),
+                    Font = Enum.Font.Gotham,
+                    Text = text,
+                    TextColor3 = Theme.SubText,
+                    TextSize = 12,
+                    TextXAlignment = Enum.TextXAlignment.Left
+                })
                 RegisterThemeLink(Lbl, "TextColor3", "SubText")
-                local Preview =
-                    Create(
-                    "Frame",
-                    {
-                        Parent = Header,
-                        AnchorPoint = Vector2.new(1, 0.5),
-                        Position = UDim2.new(1, 0, 0.5, 0),
-                        Size = UDim2.new(0, 26, 0, 16),
-                        BackgroundColor3 = CurrentColor
-                    }
-                )
+                
+                local Preview = Create("Frame", {
+                    Parent = Header,
+                    AnchorPoint = Vector2.new(1, 0.5),
+                    Position = UDim2.new(1, 0, 0.5, 0),
+                    Size = UDim2.new(0, 26, 0, 16),
+                    BackgroundColor3 = CurrentColor
+                })
                 Round(Preview, 4)
                 Stroke(Preview, Theme.Outline, 1)
 
-                local Sliders =
-                    Create(
-                    "Frame",
-                    {
-                        Parent = CFrame,
-                        BackgroundTransparency = 1,
-                        Position = UDim2.new(0, 0, 0, 26),
-                        Size = UDim2.new(1, 0, 0, 0),
-                        AutomaticSize = Enum.AutomaticSize.Y
-                    }
-                )
-                local SLayout = Create("UIListLayout", {Parent = Sliders, Padding = UDim.new(0, 4)})
+                local Sliders = Create("Frame", {
+                    Parent = CFrame,
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(0, 0, 0, 26),
+                    Size = UDim2.new(1, 0, 0, 0),
+                    AutomaticSize = Enum.AutomaticSize.Y
+                })
+                local SLayout = Create("UIListLayout", {
+                    Parent = Sliders,
+                    Padding = UDim.new(0, 4)
+                })
 
                 local function CreateRGB(colorName, initVal, colorCode)
-                    local S =
-                        Create("Frame", {Parent = Sliders, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 20)})
-                    local Bar =
-                        Create(
-                        "TextButton",
-                        {
-                            Parent = S,
-                            BackgroundColor3 = Theme.Element,
-                            Position = UDim2.new(0, 0, 0.5, -2),
-                            Size = UDim2.new(1, 0, 0, 4),
-                            Text = "",
-                            AutoButtonColor = false
-                        }
-                    )
+                    local S = Create("Frame", {
+                        Parent = Sliders,
+                        BackgroundTransparency = 1,
+                        Size = UDim2.new(1, 0, 0, 20)
+                    })
+                    
+                    local Bar = Create("TextButton", {
+                        Parent = S,
+                        BackgroundColor3 = Theme.Element,
+                        Position = UDim2.new(0, 0, 0.5, -2),
+                        Size = UDim2.new(1, 0, 0, 4),
+                        Text = "",
+                        AutoButtonColor = false
+                    })
                     Round(Bar, 4)
                     RegisterThemeLink(Bar, "BackgroundColor3", "Element")
-                    local Fill =
-                        Create(
-                        "Frame",
-                        {Parent = Bar, BackgroundColor3 = colorCode, Size = UDim2.new(initVal / 255, 0, 1, 0)}
-                    )
+                    
+                    local Fill = Create("Frame", {
+                        Parent = Bar,
+                        BackgroundColor3 = colorCode,
+                        Size = UDim2.new(initVal / 255, 0, 1, 0)
+                    })
                     Round(Fill, 4)
-                    local dragging, Update = false, function(input)
-                            local p = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
-                            TweenService:Create(Fill, TweenInfo.new(0.05), {Size = UDim2.new(p, 0, 1, 0)}):Play()
-                            local r, g, b = CurrentColor.R * 255, CurrentColor.G * 255, CurrentColor.B * 255
-                            if colorName == "R" then
-                                r = p * 255
-                            elseif colorName == "G" then
-                                g = p * 255
-                            else
-                                b = p * 255
-                            end
-                            CurrentColor = Color3.fromRGB(r, g, b)
-                            Preview.BackgroundColor3 = CurrentColor
-                            if callback then
-                                callback(CurrentColor)
-                            end
+                    
+                    local dragging = false
+                    local Update = function(input)
+                        local p = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
+                        TweenService:Create(Fill, TweenInfo.new(0.05), {Size = UDim2.new(p, 0, 1, 0)}):Play()
+                        local r, g, b = CurrentColor.R * 255, CurrentColor.G * 255, CurrentColor.B * 255
+                        if colorName == "R" then r = p * 255
+                        elseif colorName == "G" then g = p * 255
+                        else b = p * 255 end
+                        CurrentColor = Color3.fromRGB(r, g, b)
+                        Preview.BackgroundColor3 = CurrentColor
+                        if callback then callback(CurrentColor) end
+                    end
+                    
+                    Bar.InputBegan:Connect(function(i)
+                        if i.UserInputType == Enum.UserInputType.MouseButton1 then
+                            dragging = true
+                            Update(i)
                         end
-                    Bar.InputBegan:Connect(
-                        function(i)
-                            if i.UserInputType == Enum.UserInputType.MouseButton1 then
-                                dragging = true
-                                Update(i)
-                            end
+                    end)
+                    UserInputService.InputEnded:Connect(function(i)
+                        if i.UserInputType == Enum.UserInputType.MouseButton1 then
+                            dragging = false
                         end
-                    )
-                    UserInputService.InputEnded:Connect(
-                        function(i)
-                            if i.UserInputType == Enum.UserInputType.MouseButton1 then
-                                dragging = false
-                            end
+                    end)
+                    UserInputService.InputChanged:Connect(function(i)
+                        if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+                            Update(i)
                         end
-                    )
-                    UserInputService.InputChanged:Connect(
-                        function(i)
-                            if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
-                                Update(i)
-                            end
-                        end
-                    )
+                    end)
                 end
+                
                 CreateRGB("R", CurrentColor.R * 255, Color3.fromRGB(255, 50, 50))
                 CreateRGB("G", CurrentColor.G * 255, Color3.fromRGB(50, 255, 50))
                 CreateRGB("B", CurrentColor.B * 255, Color3.fromRGB(50, 50, 255))
-                Header.MouseButton1Click:Connect(
-                    function()
-                        Open = not Open
-                        local H = Open and (26 + SLayout.AbsoluteContentSize.Y + 4) or 26
-                        TweenService:Create(CFrame, TweenInfo.new(0.3), {Size = UDim2.new(1, 0, 0, H)}):Play()
-                    end
-                )
+                
+                Header.MouseButton1Click:Connect(function()
+                    Open = not Open
+                    local H = Open and (26 + SLayout.AbsoluteContentSize.Y + 4) or 26
+                    TweenService:Create(CFrame, TweenInfo.new(0.3), {Size = UDim2.new(1, 0, 0, H)}):Play()
+                end)
             end
 
             return SecFuncs
