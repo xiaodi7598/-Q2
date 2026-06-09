@@ -1,4 +1,4 @@
---by小迪
+-- by 小迪
 local AYXDiscordUILibrary = {}
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -29,7 +29,7 @@ local Config = {
     EnableSmoothScrolling = true,
     SoundErrorCount = 0,
     MaxSoundErrors = 5,
-    UIScale = 0.85,  -- 默认放大一点
+    UIScale = 0.85,
     MinScale = 0.5,
     MaxScale = 1.3
 }
@@ -44,8 +44,8 @@ local HoverColors = {
     ChannelNormal = Color3.fromRGB(47, 49, 54)
 }
 
-local 当前缩放 = Config.UIScale
-local 缩放步长 = 0.05
+local currentScale = Config.UIScale
+local scaleStep = 0.05
 
 local function UpdateHoverColors()
     local accentColor = Config.AccentColor
@@ -118,7 +118,7 @@ function AYXDiscordUILibrary:ToggleBlur(enabled)
     SetBlur(enabled)
 end
 
--- 修复：手机端友好的滑块
+-- 手机端友好的滑块（保留但未直接使用，下面有完整实现）
 local function CreateMobileFriendlySlider(sliderFrame, currentValueFrame, zip, valueLabel, min, max, start, callback)
     local dragging = false
     local sliderFunc = {}
@@ -177,7 +177,7 @@ local function CreateMobileFriendlySlider(sliderFrame, currentValueFrame, zip, v
     return sliderFunc
 end
 
--- 修复：手机端友好的颜色选择器
+-- 手机端友好的颜色选择器（保留但未直接使用）
 local function CreateMobileFriendlyColorPicker(colorFrame, hueFrame, colorSelection, hueSelection, presetColorFrame, callback)
     local ColorH, ColorS, ColorV = 1, 1, 1
     local ColorInput = nil
@@ -268,7 +268,7 @@ local function SaveInfo()
     writefile("discordlibinfo.txt", HttpService:JSONEncode(userinfo))
 end
 
--- 修复：增强的拖动功能，支持手机触摸
+-- 拖动功能，支持手机触摸
 local function MakeDraggable(topbarobject, object)
     local dragging = false
     local dragStart = nil
@@ -324,14 +324,14 @@ uiScaleObj.Parent = Discord
 
 -- 缩放功能
 local function setUIScale(scale)
-    当前缩放 = math.clamp(scale, Config.MinScale, Config.MaxScale)
-    Config.UIScale = 当前缩放
-    uiScaleObj.Scale = 当前缩放
-    return 当前缩放
+    currentScale = math.clamp(scale, Config.MinScale, Config.MaxScale)
+    Config.UIScale = currentScale
+    uiScaleObj.Scale = currentScale
+    return currentScale
 end
 
-function AYXDiscordUILibrary:ZoomIn() return setUIScale(当前缩放 + 缩放步长) end
-function AYXDiscordUILibrary:ZoomOut() return setUIScale(当前缩放 - 缩放步长) end
+function AYXDiscordUILibrary:ZoomIn() return setUIScale(currentScale + scaleStep) end
+function AYXDiscordUILibrary:ZoomOut() return setUIScale(currentScale - scaleStep) end
 function AYXDiscordUILibrary:SetUIScale(scale) return setUIScale(scale) end
 
 function AYXDiscordUILibrary:Window(text)
@@ -527,13 +527,13 @@ function AYXDiscordUILibrary:Window(text)
         MainFrame.Size = minimized and UDim2.new(0, scaledW, 0, scaledTopBar) or UDim2.new(0, scaledW, 0, scaledH)
     end)
     ZoomOutBtn.MouseButton1Click:Connect(function() 
-        local newScale = setUIScale(当前缩放 - 缩放步长)
+        local newScale = setUIScale(currentScale - scaleStep)
         scaledW = math.floor(windowWidth * newScale)
         scaledH = math.floor(windowHeight * newScale)
         MainFrame.Size = UDim2.new(0, scaledW, 0, minimized and scaledTopBar or scaledH)
     end)
     ZoomInBtn.MouseButton1Click:Connect(function()
-        local newScale = setUIScale(当前缩放 + 缩放步长)
+        local newScale = setUIScale(currentScale + scaleStep)
         scaledW = math.floor(windowWidth * newScale)
         scaledH = math.floor(windowHeight * newScale)
         MainFrame.Size = UDim2.new(0, scaledW, 0, minimized and scaledTopBar or scaledH)
@@ -1094,7 +1094,7 @@ function AYXDiscordUILibrary:Window(text)
                 ChannelHolder.CanvasSize = UDim2.new(0, 0, 0, ChannelHolderLayout.AbsoluteContentSize.Y + math.floor(10 * Config.UIScale))
             end
             
-            -- 修复：手机端友好的滑块
+            -- 手机端友好的滑块实现
             function ChannelContent:Slider(sliderText, minVal, maxVal, startVal, callback)
                 local SliderFunc = {}
                 local Slider = Instance.new("Frame")
@@ -1517,7 +1517,7 @@ function AYXDiscordUILibrary:Window(text)
         TitleLabel.Position = UDim2.new(0.05, 0, 0.08, 0)
         TitleLabel.Size = UDim2.new(0.9, 0, 0, math.floor(30 * Config.UIScale))
         TitleLabel.Font = Enum.Font.GothamSemibold
-        TitleLabel.Text = titleText or "通知"
+        TitleLabel.Text = titleText or "Notification"
         TitleLabel.TextColor3 = Config.TextColor
         TitleLabel.TextSize = math.floor(18 * Config.UIScale)
 
@@ -1538,7 +1538,7 @@ function AYXDiscordUILibrary:Window(text)
         ActionBtn.Position = UDim2.new(0.5, -math.floor(60 * Config.UIScale), 0.78, 0)
         ActionBtn.Size = UDim2.new(0, math.floor(120 * Config.UIScale), 0, math.floor(32 * Config.UIScale))
         ActionBtn.Font = Enum.Font.Gotham
-        ActionBtn.Text = btnText or "确定"
+        ActionBtn.Text = btnText or "OK"
         ActionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         ActionBtn.TextSize = math.floor(14 * Config.UIScale)
         ActionBtn.AutoButtonColor = false
