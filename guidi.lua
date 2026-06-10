@@ -2694,7 +2694,7 @@ at,
 as,
 })
 
-local av=af("Enter Key","key",nil,"Input",function(av)
+local av=af("迪脚本","key",nil,"Input",function(av)
 an=av
 end)
 
@@ -2798,7 +2798,7 @@ PaddingBottom=UDim.new(0,16),
 
 
 
-local az=ae("Exit","log-out",function()
+local az=ae("退出","log-out",function()
 al:Close()()
 end,"Tertiary",ax.Frame)
 
@@ -2810,7 +2810,7 @@ az.AnchorPoint=Vector2.new(0,1)
 end
 
 if ag.KeySystem.URL then
-ae("Get key","key",function()
+ae("获取","key",function()
 setclipboard(ag.KeySystem.URL)
 end,"Secondary",ax.Frame)
 end
@@ -2826,7 +2826,7 @@ if ag.KeySystem.API then
 
 local aA=240
 local aB=false
-local b=ae("Get key","key",nil,"Secondary",ax.Frame)
+local b=ae("获取","key",nil,"Secondary",ax.Frame)
 
 local d=ab.NewRoundFrame(99,"Squircle",{
 Size=UDim2.new(0,1,1,0),
@@ -3039,7 +3039,7 @@ task.wait(0.4)
 ai(true)
 end
 
-local aA=ae("Submit","arrow-right",function()
+local aA=ae("确定","arrow-right",function()
 local aA=tostring(an or"empty")local aB=
 ag.Folder or ag.Title
 
