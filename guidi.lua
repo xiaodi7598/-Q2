@@ -13411,8 +13411,8 @@ F=true
 
 au:Dialog{
 
-Title="不要退",
-Content="退出容易没全家",
+Title="Close Window",
+Content="Do you want to close this window? You will not be able to open it again.",
 Buttons={
 {
 Title="Cancel",
@@ -13423,7 +13423,7 @@ end,
 Variant="Secondary",
 },
 {
-Title="别退出",
+Title="Close Window",
 
 Callback=function()
 F=false
