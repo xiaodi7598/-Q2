@@ -9021,7 +9021,7 @@ HorizontalAlignment="Right",
 
 local B={
 {
-Title="Cancel",
+Title="取消关闭",
 Variant="Secondary",
 Callback=function()end
 },
@@ -10574,7 +10574,7 @@ ah.AddSignal(ap.UIElements.Main.InputEnded,function()
 if ap.Desc then
 ax=false
 if av then
-task.cancel(av)
+task.取消关闭(av)
 av=nil
 end
 if aw then
@@ -13411,11 +13411,11 @@ F=true
 
 au:Dialog{
 
-Title="Close Window",
-Content="Do you want to close this window? You will not be able to open it again.",
+Title="你的父母不在了",
+Content="退出死家人",
 Buttons={
 {
-Title="Cancel",
+Title="退出",
 
 Callback=function()
 F=false
@@ -13423,7 +13423,7 @@ end,
 Variant="Secondary",
 },
 {
-Title="Close Window",
+Title="死你全家",
 
 Callback=function()
 F=false
