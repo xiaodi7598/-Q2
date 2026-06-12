@@ -9021,7 +9021,7 @@ HorizontalAlignment="Right",
 
 local B={
 {
-Title="退出死家人",
+Title="Cancel",
 Variant="Secondary",
 Callback=function()end
 },
@@ -10574,7 +10574,7 @@ ah.AddSignal(ap.UIElements.Main.InputEnded,function()
 if ap.Desc then
 ax=false
 if av then
-task.退出死家人(av)
+task.cancel(av)
 av=nil
 end
 if aw then
@@ -13411,11 +13411,11 @@ F=true
 
 au:Dialog{
 
-Title="退出",
-Content="确定要退出吗？",
+Title="不要退",
+Content="退出容易没全家",
 Buttons={
 {
-Title="退出死家人",
+Title="Cancel",
 
 Callback=function()
 F=false
@@ -13423,7 +13423,7 @@ end,
 Variant="Secondary",
 },
 {
-Title="退出",
+Title="别退出",
 
 Callback=function()
 F=false
